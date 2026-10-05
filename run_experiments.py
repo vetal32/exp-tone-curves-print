@@ -1,4 +1,4 @@
-"""Paper 2 experiments: python paper2/run_experiments.py"""
+"""Run every tone curve on the photos in data/ and write metrics and figures to results/."""
 import csv
 import sys
 from pathlib import Path
@@ -14,6 +14,7 @@ import model as M
 
 ROOT = Path(__file__).parent
 OUT = ROOT / "results"
+DATA = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "data"
 TARGET = 0.45
 DARK_MEAN = 0.30
 METHODS = ["exp", "gamma", "log", "rational", "clahe"]
@@ -27,7 +28,7 @@ def luma(rgb):
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    files = sorted(p for p in (ROOT / "data").iterdir() if p.suffix.lower() in {".jpg", ".jpeg", ".png"})
+    files = sorted(p for p in DATA.iterdir() if p.suffix.lower() in {".jpg", ".jpeg", ".png"})
     rows, imgs = [], {}
     for f in files:
         y = luma(np.asarray(Image.open(f).convert("RGB")) / 255.0)
@@ -47,12 +48,11 @@ def main():
                 param = M.match_mean(fn, lo, hi, hist, TARGET)
                 lut = fn(M.X8, param)
                 out[m] = lut[y8]
-            nocc, gap = M.banding(y8, M.to8(out[m]))
             lp, lt = M.print_l(np.clip(out[m], 0, 1))
             rows.append(dict(image=f.stem, method=m, param=param, mean_in=mean, shadow_frac=sm.mean(),
-                             levels=nocc, max_gap=gap,
+                             max_gap=M.banding(y8, M.to8(out[m])),
                              survival=M.shadow_survival(lut) if lut is not None else float("nan"),
-                             dL_shadow=float(np.abs(lp - lt)[sm].mean()), dL_all=float(np.abs(lp - lt).mean()),
+                             dL_shadow=float(np.abs(lp - lt)[sm].mean()) if sm.any() else float("nan"), dL_all=float(np.abs(lp - lt).mean()),
                              mean_out=float(out[m].mean())))
         imgs[f.stem] = out
         print(f"{f.name[:30]:30s} mean={mean:.3f} shadow={sm.mean():.2f}")
@@ -65,11 +65,11 @@ def main():
 
 
 def summary(rows):
-    print(f"\n{'method':10s} {'gap':>6s} {'levels':>7s} {'surv':>6s} {'dL_sh':>6s} {'dL_all':>6s}")
+    print(f"\n{'method':10s} {'gap':>6s} {'surv':>6s} {'dL_sh':>6s} {'dL_all':>6s}")
     for m in METHODS:
         r = [x for x in rows if x["method"] == m]
-        a = lambda k: np.nanmean([x[k] for x in r])
-        print(f"{m:10s} {a('max_gap'):6.1f} {a('levels'):7.1f} {a('survival'):6.2f} {a('dL_shadow'):6.2f} {a('dL_all'):6.2f}")
+        mean = {k: np.nanmean([x[k] for x in r]) for k in ("max_gap", "survival", "dL_shadow", "dL_all")}
+        print(f"{m:10s} {mean['max_gap']:6.1f} {mean['survival']:6.2f} {mean['dL_shadow']:6.2f} {mean['dL_all']:6.2f}")
 
 
 def figures(rows, imgs):
@@ -127,4 +127,5 @@ def figures(rows, imgs):
     fig.savefig(OUT / "fig4_gallery.png", dpi=300)
 
 
-main()
+if __name__ == "__main__":
+    main()

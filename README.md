@@ -9,7 +9,8 @@ Yule-Nielsen spread).
     pip install -r requirements.txt
     python run_experiments.py
 
-Put the test photographs in `data/` (see `data/SOURCES.md`). Images with mean luma above 0.30 are skipped.
+Put the test photographs in `data/` (see `data/SOURCES.md`), or pass another folder: `python run_experiments.py path/to/photos`.
+Images with mean luma above 0.30 are skipped.
 Results are written to `results/`: `metrics.csv` and four figures.
 
 ## Files

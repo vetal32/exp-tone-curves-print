@@ -59,10 +59,9 @@ def to8(y):
 
 
 def banding(y8_in, y8_out, shadow=SHADOW):
-    """Occupied output levels and the largest gap among them, for shadow inputs."""
-    m = y8_in <= int(shadow * 255)
-    lv = np.unique(y8_out[m])
-    return len(lv), int(np.diff(lv).max()) if len(lv) > 1 else 0
+    """Largest gap between occupied output levels, over shadow input pixels."""
+    lv = np.unique(y8_out[y8_in <= int(shadow * 255)])
+    return int(np.diff(lv).max()) if len(lv) > 1 else 0
 
 
 def _threshold_matrix(n=CELL):
